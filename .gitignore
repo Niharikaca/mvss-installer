@@ -1,0 +1,6 @@
+R-portable/
+installer/*.exe
+*.Rproj.user
+*.Rhistory
+*.RData
+*.rds
