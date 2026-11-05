@@ -25,9 +25,8 @@ iscc_candidates <- unique(iscc_candidates[nzchar(iscc_candidates) & file.exists(
 if (!length(iscc_candidates)) stop_with("Inno Setup 6 compiler (ISCC.exe) was not found. Install it from https://jrsoftware.org/isdl.php, then rerun this build.")
 iscc_path <- normalizePath(iscc_candidates[[1]], winslash = "/")
 
-installed <- system2(runtime_candidates[[1]], c("--vanilla", "-e", shQuote(".libPaths(.Library); cat(installed.packages()[,'Package'], sep='\\n')")), stdout = TRUE)
-if (!is.null(attr(installed, "status")) && attr(installed, "status") != 0L) stop_with("Could not inspect packages in bundled R.")
-missing <- setdiff(required_packages, installed)
+bundled_library <- file.path(runtime_root, "library")
+missing <- required_packages[!file.exists(file.path(bundled_library, required_packages, "DESCRIPTION"))]
 if (length(missing)) stop_with("Missing bundled R packages: %s. Install these into this portable R library before building: install.packages(c(%s), repos='https://cloud.r-project.org')", paste(missing, collapse = ", "), paste(sprintf("'%s'", missing), collapse = ","))
 
 if (!dir.exists(installer_dir)) dir.create(installer_dir, recursive = TRUE)
@@ -43,7 +42,7 @@ copy_contents <- function(source, destination) {
 }
 copy_contents(app_dir, file.path(payload_dir, "app"))
 copy_contents(runtime_root, file.path(payload_dir, "R-portable"))
-for (name in c("Launch-MVSS.bat", "Launch-MVSS.R")) if (!file.copy(file.path(project_dir, name), payload_dir, overwrite = TRUE)) stop_with("Failed to stage %s.", name)
+for (name in c("Launch-MVSS.bat", "Launch-MVSS.ps1", "Launch-MVSS.R")) if (!file.copy(file.path(project_dir, name), payload_dir, overwrite = TRUE)) stop_with("Failed to stage %s.", name)
 
 output_exe <- file.path(installer_dir, "MVSS-Setup-1.0.0.exe")
 if (file.exists(output_exe)) unlink(output_exe)
