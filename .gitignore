@@ -1,5 +1,7 @@
 R-portable/
 installer/*.exe
+installer-test/
+portable-r-*.zip
 *.Rproj.user
 *.Rhistory
 *.RData

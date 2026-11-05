@@ -29,12 +29,13 @@ library("rlang")
 #library(shinyWidgets)
 #library(car)   # for Levene's test
 
+mvss_logo_available <- file.exists(file.path("www", "MVSSCLOGO.svg"))
 
 ui <- navbarPage(
   theme = shinytheme("cerulean"),
   
   title = div(
-   img(src = "MVSSCLOGO.png", height = "30px", style = "margin-right:10px;"),
+   if (mvss_logo_available) img(src = "MVSSCLOGO.svg", height = "30px", style = "margin-right:10px;"),
    "MVSS"
  ),
   
@@ -43,9 +44,9 @@ ui <- navbarPage(
   #---------------- HOME ----------------#
  tabPanel("Home", icon = icon("home"),
           withMathJax(),
-          tags$div(
+          if (mvss_logo_available) tags$div(
             style = "text-align:center;",
-            tags$img(src = "MVSSCLOGO.png", width = "8%")  # You can adjust height/width
+            tags$img(src = "MVSSCLOGO.svg", width = "8%")
           ),
           h2("$$\\text{MVSS 1.1}$$"),
           h3("$$\\text{MV Statistical Solution}$$"),
