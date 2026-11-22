@@ -104,7 +104,8 @@ try {
     $env:R_DEFAULT_PACKAGES = 'NULL'
     $env:MVSS_PORT = [string]$port
 
-    $logDir = Join-Path (Join-Path $env:LOCALAPPDATA 'MVSS') 'logs'
+    $dataDir = Join-Path $env:LOCALAPPDATA 'MVSS'
+    $logDir = Join-Path $dataDir 'logs'
     New-Item -ItemType Directory -Path $logDir -Force | Out-Null
     $stdout = Join-Path $logDir 'server-output.log'
     $stderr = Join-Path $logDir 'server-error.log'
