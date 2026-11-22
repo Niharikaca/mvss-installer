@@ -29,11 +29,11 @@ Uninstallable=yes
 Source: "{#SourceRoot}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\MVSS"; Filename: "{app}\Launch-MVSS.vbs"; WorkingDir: "{app}"
-Name: "{autodesktop}\MVSS"; Filename: "{app}\Launch-MVSS.vbs"; WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{group}\MVSS"; Filename: "{sys}\wscript.exe"; Parameters: "//B //NoLogo \"{app}\Launch-MVSS.vbs\""; WorkingDir: "{app}"
+Name: "{autodesktop}\MVSS"; Filename: "{sys}\wscript.exe"; Parameters: "//B //NoLogo \"{app}\Launch-MVSS.vbs\""; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: unchecked
 
 [Run]
-Filename: "{app}\Launch-MVSS.vbs"; Description: "Launch MVSS"; Flags: postinstall nowait skipifsilent
+Filename: "{sys}\wscript.exe"; Parameters: "//B //NoLogo \"{app}\Launch-MVSS.vbs\""; Description: "Launch MVSS"; Flags: postinstall nowait skipifsilent
