@@ -67,6 +67,9 @@ jobs:
           if ($launcher -notmatch 'MVSS\.Startup' -or $launcher -notmatch 'AddSeconds\(60\)') {
             throw "Launcher is missing the serialized start or readiness timeout logic."
           }
+          if ($build -match 'Launch-MVSS\.bat') {
+            throw "Build script still packages the old visible BAT launcher."
+          }
           if ($iss -notmatch 'Stop MVSS') {
             throw "Start Menu does not include the safe Stop MVSS shortcut."
           }
