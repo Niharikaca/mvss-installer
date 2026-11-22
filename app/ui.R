@@ -3091,7 +3091,39 @@ complexity."),
             
  navbarMenu("Sample Size",
             tabPanel(title= span("Slovin's formula", title =" For known population size"), 
-                     withMathJax(),
+                     # Remove a stale Bootstrap modal backdrop that can dim the whole app
+           # after startup. MVSS does not use a modal on the Home screen.
+           tags$head(
+             tags$style(HTML("
+               .modal-backdrop { display: none !important; }
+               body.modal-open {
+                 overflow: auto !important;
+                 padding-right: 0 !important;
+               }
+             ")),
+             tags$script(HTML("
+               (function () {
+                 function clearOrphanedBackdrop() {
+                   var activeModal = document.querySelector('.modal.in, .modal.show');
+                   if (!activeModal) {
+                     document.querySelectorAll('.modal-backdrop').forEach(function (backdrop) {
+                       backdrop.remove();
+                     });
+                     document.body.classList.remove('modal-open');
+                     document.body.style.removeProperty('padding-right');
+                   }
+                 }
+                 document.addEventListener('DOMContentLoaded', clearOrphanedBackdrop);
+                 setTimeout(clearOrphanedBackdrop, 500);
+                 setTimeout(clearOrphanedBackdrop, 1500);
+                 new MutationObserver(clearOrphanedBackdrop).observe(document.documentElement, {
+                   childList: true,
+                   subtree: true
+                 });
+               })();
+             "))
+           ),
+           withMathJax(),
                      sidebarLayout(
                        sidebarPanel(
                          style = "height: 90vh; overflow-y: auto;",
