@@ -22,6 +22,7 @@ $program = @'
 using System;
 using System.Net;
 using System.Net.Sockets;
+using System.IO;
 using System.Text;
 class Program {
   static int Main(string[] args) {
@@ -39,8 +40,12 @@ class Program {
       try { stream.Read(request, 0, request.Length); } catch { }
       byte[] body = Encoding.UTF8.GetBytes("<html><title>MV Statistical Solution</title></html>");
       byte[] header = Encoding.ASCII.GetBytes("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: " + body.Length + "\r\nConnection: close\r\n\r\n");
-      stream.Write(header, 0, header.Length);
-      stream.Write(body, 0, body.Length);
+      try {
+        stream.Write(header, 0, header.Length);
+        stream.Write(body, 0, body.Length);
+      } catch (IOException) {
+        // Readiness probes may close their connection after receiving headers.
+      }
     }
   }
 }
