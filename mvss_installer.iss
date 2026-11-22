@@ -8,14 +8,14 @@
 [Setup]
 AppId={{3F611C78-5B2B-42B5-9C39-2D310AD69D05}
 AppName=MVSS
-AppVersion=1.0.0
-AppVerName=MVSS 1.0.0
+AppVersion=1.0.1
+AppVerName=MVSS 1.0.1
 AppPublisher=MVSS
 DefaultDirName={autopf}\MVSS
 DefaultGroupName=MVSS
-UninstallDisplayName=MVSS 1.0.0
+UninstallDisplayName=MVSS 1.0.1
 OutputDir={#OutputRoot}
-OutputBaseFilename=MVSS-Setup-1.0.0
+OutputBaseFilename=MVSS-Setup-1.0.1
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
@@ -30,6 +30,7 @@ Source: "{#SourceRoot}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
 
 [Icons]
 Name: "{group}\MVSS"; Filename: "{sys}\wscript.exe"; Parameters: "//B //NoLogo ""{app}\Launch-MVSS.vbs"""; WorkingDir: "{app}"
+Name: "{group}\Stop MVSS"; Filename: "{sys}\wscript.exe"; Parameters: "//B //NoLogo ""{app}\Stop-MVSS.vbs"""; WorkingDir: "{app}"
 Name: "{autodesktop}\MVSS"; Filename: "{sys}\wscript.exe"; Parameters: "//B //NoLogo ""{app}\Launch-MVSS.vbs"""; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Tasks]
