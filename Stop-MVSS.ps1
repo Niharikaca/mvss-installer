@@ -12,36 +12,29 @@ function Show-StopMessage([string]$Text, [bool]$IsError = $false) {
 }
 
 try {
-    if (-not (Test-Path -LiteralPath $pidFile)) {
-        Show-StopMessage 'MVSS is not running.'
+    # Identify only Rscript processes launched with this installation's exact
+    # MVSS runner path. This also handles sessions left by older releases.
+    $matchingProcesses = @(Get-CimInstance Win32_Process -Filter "Name = 'Rscript.exe'" |
+        Where-Object {
+            ([string]$_.ExecutablePath -ieq $expectedRuntime) -and
+            ([string]$_.CommandLine).IndexOf($expectedRunner, [System.StringComparison]::OrdinalIgnoreCase) -ge 0
+        })
+
+    if ($matchingProcesses.Count -eq 0) {
+        Remove-Item -LiteralPath $pidFile -Force -ErrorAction SilentlyContinue
+        Show-StopMessage 'MVSS is already closed.'
         exit 0
     }
 
-    $serverPid = 0
-    $pidText = (Get-Content -LiteralPath $pidFile -Raw).Trim()
-    if (-not [int]::TryParse($pidText, [ref]$serverPid) -or $serverPid -lt 1) {
-        Remove-Item -LiteralPath $pidFile -Force -ErrorAction SilentlyContinue
-        Show-StopMessage 'The saved MVSS process information was invalid. Please launch MVSS again.' $true
-        exit 1
+    # Check the PID file if present, but do not rely on it alone: a crash or
+    # previous release may leave the server running without a valid PID file.
+    foreach ($process in $matchingProcesses) {
+        Stop-Process -Id $process.ProcessId -Force -ErrorAction Stop
+    }
+    foreach ($process in $matchingProcesses) {
+        try { Wait-Process -Id $process.ProcessId -Timeout 10 -ErrorAction Stop } catch {}
     }
 
-    $process = Get-CimInstance Win32_Process -Filter "ProcessId = $serverPid" -ErrorAction SilentlyContinue
-    if ($null -eq $process) {
-        Remove-Item -LiteralPath $pidFile -Force -ErrorAction SilentlyContinue
-        Show-StopMessage 'MVSS was already closed.'
-        exit 0
-    }
-
-    $commandLine = [string]$process.CommandLine
-    $isMvss = ([string]$process.ExecutablePath -ieq $expectedRuntime) -and
-        ($commandLine.IndexOf($expectedRunner, [System.StringComparison]::OrdinalIgnoreCase) -ge 0)
-    if (-not $isMvss) {
-        Show-StopMessage 'The saved process no longer belongs to MVSS. It was not stopped, to protect other applications.' $true
-        exit 1
-    }
-
-    Stop-Process -Id $serverPid -Force
-    try { Wait-Process -Id $serverPid -Timeout 10 -ErrorAction Stop } catch {}
     Remove-Item -LiteralPath $pidFile -Force -ErrorAction SilentlyContinue
     Show-StopMessage 'MVSS has been stopped. You can open it again whenever you need.'
 } catch {
