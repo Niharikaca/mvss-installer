@@ -73,7 +73,15 @@ try {
       $page = Invoke-WebRequest -UseBasicParsing -Uri $url -TimeoutSec 2
       if ($page.Content.Contains("MV Statistical Solution")) { $ready = $true; break }
     } catch {}
-    if ($first.HasExited) { throw "First launcher exited before the fake server became ready." }
+    if ($first.HasExited) {
+      $logDir = Join-Path (Join-Path $env:LOCALAPPDATA "MVSS") "logs"
+      $launcherLog = Join-Path $logDir "launcher-error.log"
+      $serverLog = Join-Path $logDir "server-error.log"
+      $details = ""
+      if (Test-Path $launcherLog) { $details += "`r`nLauncher log:`r`n" + (Get-Content $launcherLog -Raw) }
+      if (Test-Path $serverLog) { $details += "`r`nR server log:`r`n" + (Get-Content $serverLog -Raw) }
+      throw "First launcher exited before the fake server became ready (exit $($first.ExitCode)).$details"
+    }
     Start-Sleep -Milliseconds 250
   }
   if (-not $ready) { throw "Fake MVSS server did not become ready." }
