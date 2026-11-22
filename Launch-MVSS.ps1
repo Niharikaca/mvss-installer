@@ -43,13 +43,21 @@ try {
     Write-Host "Checking MVSS on 127.0.0.1:$port ..."
 
     if (Test-LocalPort $port) {
-        $existingPage = Get-LocalPage $url
-        if (Test-MvssPage $existingPage) {
-            Start-Process $url
-            Write-Host 'An MVSS instance is already running. Opened it in your browser.'
-            exit 0
+        # Another MVSS launch may have just started the server. Give Shiny time
+        # to finish responding before treating this port as an unrelated app.
+        $existingPage = $null
+        $existingDeadline = (Get-Date).AddSeconds(12)
+        while ((Get-Date) -lt $existingDeadline) {
+            $existingPage = Get-LocalPage $url
+            if (Test-MvssPage $existingPage) {
+                Start-Process $url
+                Write-Host 'An MVSS instance is already running. Opened it in your browser.'
+                exit 0
+            }
+            Start-Sleep -Milliseconds 600
         }
-        throw "Port $port on 127.0.0.1 is already being used by another application. Close that application or set MVSS_PORT to another unused port, then start MVSS again."
+
+        throw "Port $port on 127.0.0.1 is already being used, but MVSS did not respond as expected after waiting 12 seconds. Close the application using that port or set MVSS_PORT to another unused port, then start MVSS again."
     }
 
     $root = $PSScriptRoot
