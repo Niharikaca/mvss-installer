@@ -23,6 +23,7 @@ on:
       - "mvss_installer.iss"
       - "build_installer.R"
       - ".github/workflows/windows-launcher-validation.yml"
+      - ".github/scripts/test-launcher.ps1"
 
 jobs:
   validate-launcher:
