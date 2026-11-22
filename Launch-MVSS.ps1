@@ -33,6 +33,8 @@ function Test-MvssPage($Page) {
 }
 
 $serverProcess = $null
+$startupMutex = $null
+$mutexOwned = $false
 try {
     $portText = if ($env:MVSS_PORT) { $env:MVSS_PORT } else { '4242' }
     $port = 0
@@ -40,24 +42,45 @@ try {
         throw 'MVSS_PORT must be a valid TCP port from 1 to 65535.'
     }
     $url = "http://127.0.0.1:$port/"
-    Write-Host "Checking MVSS on 127.0.0.1:$port ..."
 
-    if (Test-LocalPort $port) {
-        # Another MVSS launch may have just started the server. Give Shiny time
-        # to finish responding before treating this port as an unrelated app.
-        $existingPage = $null
-        $existingDeadline = (Get-Date).AddSeconds(12)
-        while ((Get-Date) -lt $existingDeadline) {
-            $existingPage = Get-LocalPage $url
-            if (Test-MvssPage $existingPage) {
-                Start-Process $url
-                Write-Host 'An MVSS instance is already running. Opened it in your browser.'
-                exit 0
-            }
-            Start-Sleep -Milliseconds 600
+    # Keep launches in this Windows session serialized. This prevents two rapid
+    # clicks from racing to start separate R/Shiny processes on the same port.
+    $startupMutex = [System.Threading.Mutex]::new($false, 'Local\MVSS.Startup')
+    $mutexDeadline = (Get-Date).AddSeconds(70)
+    while (-not $mutexOwned -and (Get-Date) -lt $mutexDeadline) {
+        try {
+            $mutexOwned = $startupMutex.WaitOne(0)
+        } catch [System.Threading.AbandonedMutexException] {
+            # The previous launcher crashed; this process now owns the mutex.
+            $mutexOwned = $true
         }
 
-        throw "Port $port on 127.0.0.1 is already being used, but MVSS did not respond as expected after waiting 12 seconds. Close the application using that port or set MVSS_PORT to another unused port, then start MVSS again."
+        if ($mutexOwned) { break }
+
+        # While another launcher owns the lock, reuse its app as soon as it is
+        # ready. If it fails, the mutex becomes available and this launch starts.
+        if (Test-MvssPage (Get-LocalPage $url)) {
+            Start-Process $url
+            exit 0
+        }
+        Start-Sleep -Milliseconds 350
+    }
+    if (-not $mutexOwned) {
+        throw 'MVSS is still starting in another window. Please wait a moment, then open MVSS again.'
+    }
+
+    if (Test-LocalPort $port) {
+        # A server may be bound before Shiny finishes serving its page.
+        $existingDeadline = (Get-Date).AddSeconds(15)
+        while ((Get-Date) -lt $existingDeadline) {
+            if (Test-MvssPage (Get-LocalPage $url)) {
+                Start-Process $url
+                exit 0
+            }
+            Start-Sleep -Milliseconds 500
+        }
+
+        throw "Port $port is already in use, but it did not respond as MVSS. Close the application using that port or set MVSS_PORT to another unused port."
     }
 
     $root = $PSScriptRoot
@@ -74,7 +97,6 @@ try {
     if ($versionOutput -notmatch '\(R\) version 4\.6\.2') {
         throw "The bundled runtime must be R 4.6.2. Found: $versionOutput"
     }
-    Write-Host 'Using bundled Portable R 4.6.2.'
 
     $env:R_HOME = Join-Path $root 'R-portable'
     $env:R_LIBS_USER = ''
@@ -82,8 +104,7 @@ try {
     $env:R_DEFAULT_PACKAGES = 'NULL'
     $env:MVSS_PORT = [string]$port
 
-    $dataDir = Join-Path $env:LOCALAPPDATA 'MVSS'
-    $logDir = Join-Path $dataDir 'logs'
+    $logDir = Join-Path (Join-Path $env:LOCALAPPDATA 'MVSS') 'logs'
     New-Item -ItemType Directory -Path $logDir -Force | Out-Null
     $stdout = Join-Path $logDir 'server-output.log'
     $stderr = Join-Path $logDir 'server-error.log'
@@ -91,44 +112,37 @@ try {
         -ArgumentList @('--vanilla', ('"{0}"' -f $runner), ('"{0}"' -f $app)) `
         -WorkingDirectory $root -WindowStyle Hidden -PassThru `
         -RedirectStandardOutput $stdout -RedirectStandardError $stderr
-    Write-Host 'Starting the bundled Shiny application and waiting for localhost readiness...'
 
     $ready = $false
     $deadline = (Get-Date).AddSeconds(60)
     while ((Get-Date) -lt $deadline) {
         if ($serverProcess.HasExited) {
             $details = if (Test-Path $stderr) { Get-Content -LiteralPath $stderr -Raw } else { '' }
-            throw "MVSS server exited before it became ready. $details"
+            throw "MVSS server stopped before it became ready. $details"
         }
-        if (Test-LocalPort $port) {
-            $page = Get-LocalPage $url
-            if (Test-MvssPage $page) {
-                $ready = $true
-                break
-            }
-            if ($null -ne $page) {
-                throw "Port $port on 127.0.0.1 began serving a page that is not MVSS. The launcher will not interfere with that service."
-            }
+        if (Test-MvssPage (Get-LocalPage $url)) {
+            $ready = $true
+            break
         }
         Start-Sleep -Milliseconds 500
     }
-    if (-not $ready) { throw "MVSS did not become ready at $url within 60 seconds." }
+    if (-not $ready) { throw "MVSS did not become ready within 60 seconds. Please try again or check the diagnostic log." }
 
     Start-Process $url
-    Write-Host 'MVSS is ready in your browser.'
+
+    # Keep the mutex while the server is alive so later launches reuse it.
     while (-not $serverProcess.HasExited) { Start-Sleep -Seconds 2 }
 } catch {
     $message = $_.Exception.Message
+    $logPath = Join-Path (Join-Path (Join-Path $env:LOCALAPPDATA 'MVSS') 'logs') 'launcher-error.log'
     try {
-        $logDir = Join-Path (Join-Path $env:LOCALAPPDATA 'MVSS') 'logs'
-        New-Item -ItemType Directory -Path $logDir -Force | Out-Null
-        $logPath = Join-Path $logDir 'launcher-error.log'
+        New-Item -ItemType Directory -Path (Split-Path $logPath) -Force | Out-Null
         Add-Content -LiteralPath $logPath -Value ("[{0}] {1}`r`n{2}" -f (Get-Date), $message, ($_ | Out-String))
     } catch {}
     try {
         Add-Type -AssemblyName System.Windows.Forms
         [System.Windows.Forms.MessageBox]::Show(
-            ($message + "`r`n`r`nA diagnostic log was saved in %LOCALAPPDATA%\\MVSS\\logs."),
+            ($message + "`r`n`r`nDetails saved to: " + $logPath),
             'MVSS Startup Error',
             [System.Windows.Forms.MessageBoxButtons]::OK,
             [System.Windows.Forms.MessageBoxIcon]::Error
@@ -139,4 +153,8 @@ try {
     if ($null -ne $serverProcess -and -not $serverProcess.HasExited) {
         Stop-Process -Id $serverProcess.Id -Force -ErrorAction SilentlyContinue
     }
+    if ($mutexOwned -and $null -ne $startupMutex) {
+        try { $startupMutex.ReleaseMutex() } catch {}
+    }
+    if ($null -ne $startupMutex) { $startupMutex.Dispose() }
 }
