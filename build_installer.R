@@ -42,9 +42,9 @@ copy_contents <- function(source, destination) {
 }
 copy_contents(app_dir, file.path(payload_dir, "app"))
 copy_contents(runtime_root, file.path(payload_dir, "R-portable"))
-for (name in c("Launch-MVSS.bat", "Launch-MVSS.ps1", "Launch-MVSS.R")) if (!file.copy(file.path(project_dir, name), payload_dir, overwrite = TRUE)) stop_with("Failed to stage %s.", name)
+for (name in c("Launch-MVSS.vbs", "Launch-MVSS.ps1", "Launch-MVSS.R", "Stop-MVSS.ps1", "Stop-MVSS.vbs")) if (!file.copy(file.path(project_dir, name), payload_dir, overwrite = TRUE)) stop_with("Failed to stage %s.", name)
 
-output_exe <- file.path(installer_dir, "MVSS-Setup-1.0.0.exe")
+output_exe <- file.path(installer_dir, "MVSS-Setup-1.0.1.exe")
 if (file.exists(output_exe)) unlink(output_exe)
 source_define <- paste0('/DSourceRoot=', shQuote(normalizePath(payload_dir, winslash = "/"), type = "cmd"))
 output_define <- paste0('/DOutputRoot=', shQuote(normalizePath(installer_dir, winslash = "/"), type = "cmd"))

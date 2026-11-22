@@ -1,0 +1,81 @@
+name: Windows launcher checks
+
+on:
+  pull_request:
+    paths:
+      - "Launch-MVSS.ps1"
+      - "Launch-MVSS.vbs"
+      - "Stop-MVSS.ps1"
+      - "Stop-MVSS.vbs"
+      - "mvss_installer.iss"
+      - "build_installer.R"
+      - ".github/workflows/windows-launcher-validation.yml"
+      - ".github/scripts/test-launcher.ps1"
+  push:
+    branches:
+      - main
+      - fix/silent-windows-launcher
+    paths:
+      - "Launch-MVSS.ps1"
+      - "Launch-MVSS.vbs"
+      - "Stop-MVSS.ps1"
+      - "Stop-MVSS.vbs"
+      - "mvss_installer.iss"
+      - "build_installer.R"
+      - ".github/workflows/windows-launcher-validation.yml"
+      - ".github/scripts/test-launcher.ps1"
+
+jobs:
+  validate-launcher:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Parse PowerShell scripts
+        shell: pwsh
+        run: |
+          $files = @("Launch-MVSS.ps1", "Stop-MVSS.ps1")
+          foreach ($file in $files) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              (Join-Path $PWD $file), [ref]$tokens, [ref]$errors
+            ) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error "$file : $_" }
+              exit 1
+            }
+            Write-Host "PowerShell syntax OK: $file"
+          }
+
+      - name: Verify silent installer wiring and packaged files
+        shell: pwsh
+        run: |
+          $iss = Get-Content "mvss_installer.iss" -Raw
+          $build = Get-Content "build_installer.R" -Raw
+          $launcher = Get-Content "Launch-MVSS.ps1" -Raw
+          if ($iss -match 'Filename:\s*"{app}\\Launch-MVSS\.bat"') {
+            throw "Installer shortcut still points to the visible BAT launcher."
+          }
+          if ($iss -notmatch 'wscript\.exe' -or $iss -notmatch 'Launch-MVSS\.vbs') {
+            throw "Installer is not wired to the hidden VBS launcher."
+          }
+          foreach ($file in @("Launch-MVSS.vbs", "Stop-MVSS.ps1", "Stop-MVSS.vbs")) {
+            if ($build -notmatch [regex]::Escape($file)) {
+              throw "Build script does not stage $file."
+            }
+          }
+          if ($launcher -notmatch 'MVSS\.Startup' -or $launcher -notmatch 'AddSeconds\(60\)') {
+            throw "Launcher is missing the serialized start or readiness timeout logic."
+          }
+          if ($build -match 'Launch-MVSS\.bat') {
+            throw "Build script still packages the old visible BAT launcher."
+          }
+          if ($iss -notmatch 'Stop MVSS') {
+            throw "Start Menu does not include the safe Stop MVSS shortcut."
+          }
+          Write-Host "Installer and startup wiring checks passed."
+
+      - name: Run repeated-launch and stop integration smoke test
+        shell: pwsh
+        run: .github/scripts/test-launcher.ps1
