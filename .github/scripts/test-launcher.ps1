@@ -54,6 +54,8 @@ $probe = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback,
 $probe.Start()
 $testPort = ([System.Net.IPEndPoint]$probe.LocalEndpoint).Port
 $probe.Stop()
+$env:LOCALAPPDATA = Join-Path $tempRoot "localappdata"
+New-Item -ItemType Directory -Path $env:LOCALAPPDATA -Force | Out-Null
 $env:MVSS_PORT = [string]$testPort
 $env:MVSS_TEST_MODE = '1'
 
