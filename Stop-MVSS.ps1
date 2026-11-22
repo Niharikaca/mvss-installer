@@ -6,6 +6,7 @@ $expectedRunner = [System.IO.Path]::GetFullPath((Join-Path $installRoot 'Launch-
 $pidFile = Join-Path (Join-Path $env:LOCALAPPDATA 'MVSS') 'server.pid'
 
 function Show-StopMessage([string]$Text, [bool]$IsError = $false) {
+    if ($env:MVSS_TEST_MODE -eq '1') { Write-Host $Text; return }
     Add-Type -AssemblyName System.Windows.Forms
     $icon = if ($IsError) { [System.Windows.Forms.MessageBoxIcon]::Warning } else { [System.Windows.Forms.MessageBoxIcon]::Information }
     [System.Windows.Forms.MessageBox]::Show($Text, 'MVSS', [System.Windows.Forms.MessageBoxButtons]::OK, $icon) | Out-Null
@@ -26,8 +27,8 @@ try {
         exit 0
     }
 
-    # Check the PID file if present, but do not rely on it alone: a crash or
-    # previous release may leave the server running without a valid PID file.
+    # Match the actual executable and runner path before stopping anything.
+    # This also recovers sessions left by a crash or a previous release.
     foreach ($process in $matchingProcesses) {
         Stop-Process -Id $process.ProcessId -Force -ErrorAction Stop
     }
