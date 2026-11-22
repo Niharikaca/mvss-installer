@@ -2,7 +2,7 @@ Set shell = CreateObject("WScript.Shell")
 Set fso = CreateObject("Scripting.FileSystemObject")
 
 installFolder = fso.GetParentFolderName(WScript.ScriptFullName)
-launcher = installFolder & "\\Launch-MVSS.ps1"
+launcher = installFolder & "\Launch-MVSS.ps1"
 
 If Not fso.FileExists(launcher) Then
     MsgBox "The MVSS launcher is missing. Please reinstall MVSS.", _
