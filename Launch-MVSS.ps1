@@ -107,10 +107,25 @@ try {
     if (-not $ready) { throw "MVSS did not become ready at $url within 60 seconds." }
 
     Start-Process $url
-    Write-Host 'MVSS is ready in your browser. Keep this launcher window open while using the application.'
+    Write-Host 'MVSS is ready in your browser.'
     while (-not $serverProcess.HasExited) { Start-Sleep -Seconds 2 }
 } catch {
-    Write-Host $_.Exception.Message -ForegroundColor Red
+    $message = $_.Exception.Message
+    try {
+        $logDir = Join-Path (Join-Path $env:LOCALAPPDATA 'MVSS') 'logs'
+        New-Item -ItemType Directory -Path $logDir -Force | Out-Null
+        $logPath = Join-Path $logDir 'launcher-error.log'
+        Add-Content -LiteralPath $logPath -Value ("[{0}] {1}`r`n{2}" -f (Get-Date), $message, ($_ | Out-String))
+    } catch {}
+    try {
+        Add-Type -AssemblyName System.Windows.Forms
+        [System.Windows.Forms.MessageBox]::Show(
+            ($message + "`r`n`r`nA diagnostic log was saved in %LOCALAPPDATA%\\MVSS\\logs."),
+            'MVSS Startup Error',
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Error
+        ) | Out-Null
+    } catch {}
     exit 1
 } finally {
     if ($null -ne $serverProcess -and -not $serverProcess.HasExited) {
