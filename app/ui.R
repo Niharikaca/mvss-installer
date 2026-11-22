@@ -3091,7 +3091,32 @@ complexity."),
             
  navbarMenu("Sample Size",
             tabPanel(title= span("Slovin's formula", title =" For known population size"), 
-                     withMathJax(),
+                     # Clear Bootstrap backdrops only when no modal is actually open.
+           # This prevents a stale startup backdrop without breaking real dialogs.
+           tags$head(
+             tags$script(HTML("
+               (function () {
+                 function clearOrphanedBackdrop() {
+                   var activeModal = document.querySelector('.modal.in, .modal.show');
+                   if (!activeModal) {
+                     document.querySelectorAll('.modal-backdrop').forEach(function (backdrop) {
+                       backdrop.remove();
+                     });
+                     document.body.classList.remove('modal-open');
+                     document.body.style.removeProperty('padding-right');
+                   }
+                 }
+                 document.addEventListener('DOMContentLoaded', clearOrphanedBackdrop);
+                 setTimeout(clearOrphanedBackdrop, 500);
+                 setTimeout(clearOrphanedBackdrop, 1500);
+                 new MutationObserver(clearOrphanedBackdrop).observe(document.documentElement, {
+                   childList: true,
+                   subtree: true
+                 });
+               })();
+             "))
+           ),
+           withMathJax(),
                      sidebarLayout(
                        sidebarPanel(
                          style = "height: 90vh; overflow-y: auto;",
