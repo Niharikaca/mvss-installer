@@ -112,6 +112,8 @@ try {
         -ArgumentList @('--vanilla', ('"{0}"' -f $runner), ('"{0}"' -f $app)) `
         -WorkingDirectory $root -WindowStyle Hidden -PassThru `
         -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+    $pidFile = Join-Path $dataDir 'server.pid'
+    Set-Content -LiteralPath $pidFile -Value $serverProcess.Id -Encoding Ascii
 
     $ready = $false
     $deadline = (Get-Date).AddSeconds(60)
@@ -150,8 +152,17 @@ try {
     } catch {}
     exit 1
 } finally {
-    if ($null -ne $serverProcess -and -not $serverProcess.HasExited) {
-        Stop-Process -Id $serverProcess.Id -Force -ErrorAction SilentlyContinue
+    if ($null -ne $serverProcess) {
+        if (-not $serverProcess.HasExited) {
+            Stop-Process -Id $serverProcess.Id -Force -ErrorAction SilentlyContinue
+        }
+        if ($null -ne $pidFile -and (Test-Path -LiteralPath $pidFile)) {
+            try {
+                if ((Get-Content -LiteralPath $pidFile -Raw).Trim() -eq [string]$serverProcess.Id) {
+                    Remove-Item -LiteralPath $pidFile -Force -ErrorAction SilentlyContinue
+                }
+            } catch {}
+        }
     }
     if ($mutexOwned -and $null -ne $startupMutex) {
         try { $startupMutex.ReleaseMutex() } catch {}
