@@ -3091,16 +3091,9 @@ complexity."),
             
  navbarMenu("Sample Size",
             tabPanel(title= span("Slovin's formula", title =" For known population size"), 
-                     # Remove a stale Bootstrap modal backdrop that can dim the whole app
-           # after startup. MVSS does not use a modal on the Home screen.
+                     # Clear Bootstrap backdrops only when no modal is actually open.
+           # This prevents a stale startup backdrop without breaking real dialogs.
            tags$head(
-             tags$style(HTML("
-               .modal-backdrop { display: none !important; }
-               body.modal-open {
-                 overflow: auto !important;
-                 padding-right: 0 !important;
-               }
-             ")),
              tags$script(HTML("
                (function () {
                  function clearOrphanedBackdrop() {
