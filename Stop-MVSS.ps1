@@ -27,8 +27,7 @@ try {
         exit 0
     }
 
-    # Match the actual executable and runner path before stopping anything.
-    # This also recovers sessions left by a crash or a previous release.
+    # The exact executable and runner path are checked before any process is stopped.
     foreach ($process in $matchingProcesses) {
         Stop-Process -Id $process.ProcessId -Force -ErrorAction Stop
     }
