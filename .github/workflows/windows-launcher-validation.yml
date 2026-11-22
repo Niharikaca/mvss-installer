@@ -70,3 +70,7 @@ jobs:
             throw "Start Menu does not include the safe Stop MVSS shortcut."
           }
           Write-Host "Installer and startup wiring checks passed."
+
+      - name: Run repeated-launch and stop integration smoke test
+        shell: pwsh
+        run: .github/scripts/test-launcher.ps1
